@@ -60,6 +60,16 @@ int main(){
 	printf("=\n");
 	sub_int(&res, &a, &b);
 	print_int(&res);
+	
+	printf("Testing power\n");
+	new_int_from_dec(&a, "8");
+	print_int(&a);
+	printf("^\n");
+	new_int_from_dec(&b, "2");
+	print_int(&b);
+	printf("=\n");
+	pow_int(&res, &a, &b);
+	print_int(&res);
 
 	return 0;
 }

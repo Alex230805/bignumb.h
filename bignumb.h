@@ -25,6 +25,7 @@ void new_int_from_hex(Int* d, char* string_number);
 void add_int(Int* res, Int* a,Int* b);
 void sub_int(Int* res, Int* a,Int* b);
 void mux_int(Int* res,Int* a,Int* b);
+void pow_int(Int* res, Int* a, Int* power);
 bool int_eq(Int* a, Int* b);
 bool int_ueq(Int* a, Int* b);
 bool int_gtr(Int* a, Int* b);
@@ -203,6 +204,34 @@ void mux_int(Int* res, Int* a,Int* b){
 	}else{
 		res->sign = true;
 	}
+}
+
+void pow_int(Int* res, Int* a, Int* power){
+	Int ca = {0};
+	Int cpower = {0};
+	Int i = {0};
+	int_append_head(&i, 0);
+	if(int_ueq(power, &i) || int_ueq(power, &i)){
+		int_append_head(res, 1);
+		return;
+	}
+	Int o = {0};
+	int_append_head(&o, 1);
+	if(int_ueq(power, &o)){
+		clone_int(res, a);
+		return;
+	}
+	clone_int(&ca, a);
+	clone_int(&cpower, power);
+	dec_int(power);
+	dec_int(power);
+	while(int_lst(&i, power)){
+		mux_int(res, a, &ca);
+		clone_int(a, res);
+		inc_int(&i);
+	}
+	clone_int(a, &ca);
+	clone_int(power, &cpower);
 }
 
 NUMBER_UNIT int_pop_last(Int *a){
