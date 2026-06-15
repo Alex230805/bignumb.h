@@ -31,14 +31,8 @@ int main(){
 	print_int(&random);
 
 	printf("Testing multiplication\n");
-	a.tracker = 0;
-	a.sign = false;
-	b.tracker = 0;
-	b.sign = false;
-	res.tracker = 0;
-	res.sign = false;
-	int_append_head(&a, 1);
-	int_append_head(&b, 20);
+	new_int_from_dec(&a, "2");
+	new_int_from_dec(&b, "2");
 	print_int(&a);
 	printf("*\n");
 	print_int(&b);
@@ -47,12 +41,25 @@ int main(){
 	print_int(&res);
 
 	printf("Testing more extreme multiplication\n");
-	a.tracker = 0;
 	generate_int(&a, 300);
-	b.tracker = 0;
 	generate_int(&a, 500);
-	res.tracker = 0;
 	mux_int(&res, &a, &b);
 	print_int(&res);
+
+	printf("Testing render\n");
+	char* r = render_int(&res);
+	printf("%s\n", r);
+
+	printf("Testing subtraction\n");
+
+	new_int_from_dec(&a, "1");
+	new_int_from_dec(&b, "-2");
+	print_int(&a);
+	printf("-\n");
+	print_int(&b);
+	printf("=\n");
+	sub_int(&res, &a, &b);
+	print_int(&res);
+
 	return 0;
 }

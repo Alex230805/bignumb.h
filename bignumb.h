@@ -33,6 +33,7 @@ void inc_int(Int* a);
 void dec_int(Int* a);
 void generate_int(Int* dest, int digits);
 
+char* render_int(Int* a);
 
 NUMBER_UNIT int_pop_last(Int *a);
 void int_append_head(Int* a, NUMBER_UNIT n);
@@ -43,6 +44,8 @@ void int_norm(Int* a, size_t len);
 #ifdef BIGNUMB_IMP
 
 void new_int_from_dec(Int* d, char* string_number){
+	d->sign = false;
+	d->tracker = 0;
 	if(string_number[0] == '-'){
 		d->sign = true;
 		string_number++;
@@ -90,6 +93,8 @@ void print_int(Int *a){
 
 
 void add_int(Int* res, Int* a,Int* b){
+	res->tracker = 0;
+	res->sign = false;
 	Int ca = {0};
 	Int cb = {0};
 	clone_int(&ca, a);
@@ -149,27 +154,22 @@ void add_int(Int* res, Int* a,Int* b){
 void inc_int(Int* a){
 	Int factor = {0};
 	Int b = {0};
-	int_append_head(&factor, 1);
+	new_int_from_dec(&factor, "1");
 	clone_int(&b, a);
-	a->tracker = 0;
 	add_int(a, &b, &factor);
 }
 
 void dec_int(Int* a){
 	Int factor = {0};
 	Int b = {0};
-	int_append_head(&factor, 1);
-	factor.sign = true;
+	new_int_from_dec(&factor, "-1");
 	clone_int(&b, a);
-	a->tracker = 0;
 	add_int(a, &b, &factor);
 }
 
 
 void sub_int(Int* res, Int* a,Int* b){
-	Int j = {0}; 
-	clone_int(&j, b);
-	flip_int(b, &j);
+	b->sign  = !b->sign;
 	add_int(res, a, b);
 }
 
@@ -286,6 +286,7 @@ bool int_ueq(Int* a, Int* b){
 }
 
 bool int_gtr(Int* a, Int* b){
+	if(int_eq(a, b)) return false;
 	bool res = false;
 	if(!a->sign && b->sign){
 		return true;
@@ -318,11 +319,11 @@ bool int_gtr(Int* a, Int* b){
 }
 
 bool int_lst(Int* a, Int* b){
+	if(int_eq(a, b)) return false;
 	return !int_gtr(a, b);
 }
 
 void int_norm(Int* a, size_t len){
-	if(a->tracker == len)	return;
 	for(size_t i=0;i<len-a->tracker; i+=1){
 		int_append_head(a, 0);
 	}	
@@ -333,6 +334,19 @@ void generate_int(Int* dest, int digits){
 	for(size_t i=0;i<digits/DIGIT_PER_UNIT; i++){
 		int_append_head(dest, rand()&99);
 	}
+}
+
+char* render_int(Int* a){
+	size_t size = sizeof(char)*a->tracker*2;
+	if(a->sign) size++;
+	char* buffer = (char*)malloc(size);
+	if(a->sign) strcat(buffer, "-");
+	char t[3] = {0};
+	for(size_t i=0;i<a->tracker; i++){
+		sprintf(t, "%.2u", a->number[i]);
+		strcat(buffer, t);
+	}
+	return buffer;
 }
 
 #endif // BIGNUMB_IMP
