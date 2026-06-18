@@ -7,10 +7,12 @@
 #include <stdbool.h>
 #include <string.h>
 #include <time.h>
+#include <unistd.h>
 
 #define NUMBER_UNIT int8_t 
 #define DEFAULT_NUMB_SIZE 8
-#define DIGIT_PER_UNIT (sizeof(NUMBER_UNIT)*2) // maximum for one NUMBER_UNIT = 99
+#define DIGIT_PER_UNIT (sizeof(NUMBER_UNIT)) // maximum 9 
+#define MAX_VAL	9
 
 typedef struct{
 	NUMBER_UNIT *number;
@@ -53,15 +55,6 @@ void new_int_from_dec(Int* d, char* string_number){
 	}
 	size_t depth = (size_t)(float)(strlen(string_number)/DIGIT_PER_UNIT);
 	char* s = string_number;
-	//printf("depth for %s = %d, %d\n", string_number, depth, depth%2);
-	if(strlen(string_number)%2 != 0){
-		depth += 1;
-		char* new_number = (char*)malloc(sizeof(char)+strlen(string_number)+2);
-		strcat(new_number, "0");
-		strcat(new_number, string_number);
-		s = new_number;
-		//printf("New numb: %s\n", s);
-	}
 	if(depth == 0) depth = 1;
 	d->tracker = depth;
 	d->size = depth;
@@ -87,7 +80,7 @@ void print_int(Int *a){
 	}
 	if(a->sign) printf("-");
 	for(size_t i=0;i<a->tracker; i++){
-		printf("%.2u", a->number[i]);
+		printf("%.*u", (int)DIGIT_PER_UNIT, a->number[i]);
 	}
 	printf("\n");
 }
@@ -103,32 +96,36 @@ void add_int(Int* res, Int* a,Int* b){
 	bool inv_required = false;
 
 	NUMBER_UNIT carry = 0;
-	size_t d = 0;
 	if(ca.tracker > cb.tracker){
-		d = ca.tracker;
-	}else{
-		d = cb.tracker;
+		int_norm(&cb, ca.tracker+1);
+	}else if(ca.tracker < cb.tracker){
+		int_norm(&ca, cb.tracker+1);
 	}
+	size_t d = ca.tracker;
+
 	if(ca.sign){
 		Int n = {0};
 		flip_int(&n, &ca);
 		memcpy(&ca, &n, sizeof(Int));
+		//printf("Flipped: CA is:  %s\n", render_int(&ca));
 		inv_required = true;
 	}
 	if(cb.sign){
 		Int m = {0};
 		flip_int(&m, &cb);
 		memcpy(&cb, &m, sizeof(Int));
+		//printf("Flipped: CB is: %s\n", render_int(&ca));
 		inv_required = true;
 	}
-
 	for(size_t i=0;i<d || carry != 0; i++){
 		NUMBER_UNIT x = int_pop_last(&ca);
 		NUMBER_UNIT y = int_pop_last(&cb);
 		int dst = x+y+carry;
-		if(dst > 99){
-			carry = (int)(dst/100);
-			dst = dst%100;
+		if(dst > MAX_VAL){
+			carry = (int)(dst/(MAX_VAL+1));
+			//printf("Carry of '%d'\n", carry);
+			dst = dst%(MAX_VAL+1);
+			//printf("Dst of '%d'\n", dst);
 			if(i+1 == d && inv_required && carry){
 				// carry act as a flag, if is 1 then the final math with a 
 				// ten's complement number is positive and the carry must be 
@@ -150,6 +147,14 @@ void add_int(Int* res, Int* a,Int* b){
 		clone_int(&j, res);
 		flip_int(res, &j);
 	}
+	for(size_t i=0;i<res->tracker; i++){
+		if(res->number[i] > 0){
+			res->tracker -= i;
+			res->number += i;
+			res->size -= i;
+			break;
+		}
+	}
 }
 
 void inc_int(Int* a){
@@ -169,31 +174,27 @@ void dec_int(Int* a){
 }
 
 
-void sub_int(Int* res, Int* a,Int* b){
-	b->sign  = !b->sign;
-	add_int(res, a, b);
-}
-
 void mux_int(Int* res, Int* a,Int* b){
 	Int i = {0};
 	Int m = {0};
 	Int ca = {0};
 	Int cb = {0};
+
 	res->tracker = 0;
 	clone_int(&ca, a);
 	clone_int(&cb, b);
-	int_append_head(&i, 0);
+	new_int_from_dec(&i, "0");
+	a->sign = false;
+	b->sign = false;
 	if(int_ueq(a, &i) || int_ueq(b, &i)){
 		int_append_head(res, 0);
 		return;
 	}
+	inc_int(&i);
 	clone_int(&m, a);
-	dec_int(b);
-	dec_int(b);
 	while(int_lst(&i, b)){
 		add_int(res, a, &m);
 		clone_int(a, res);
-		res->tracker = 0;
 		inc_int(&i);
 	}
 	clone_int(res, a);
@@ -210,35 +211,34 @@ void pow_int(Int* res, Int* a, Int* power){
 	Int ca = {0};
 	Int cpower = {0};
 	Int i = {0};
+
 	int_append_head(&i, 0);
 	if(int_ueq(power, &i) || int_ueq(power, &i)){
 		int_append_head(res, 1);
 		return;
 	}
-	Int o = {0};
-	int_append_head(&o, 1);
-	if(int_ueq(power, &o)){
+	inc_int(&i);
+	if(int_ueq(power, &i)){
 		clone_int(res, a);
 		return;
 	}
 	clone_int(&ca, a);
 	clone_int(&cpower, power);
-	dec_int(power);
-	dec_int(power);
 	while(int_lst(&i, power)){
 		mux_int(res, a, &ca);
 		clone_int(a, res);
 		inc_int(&i);
 	}
+
 	clone_int(a, &ca);
 	clone_int(power, &cpower);
 }
 
 NUMBER_UNIT int_pop_last(Int *a){
-	if((int)a->tracker -1 < 0){
+	if((int)a->tracker-1 < 0){
 		return 0;
 	}
-	int p = a->number[a->tracker-1];
+	NUMBER_UNIT p = a->number[a->tracker-1];
 	a->tracker -= 1;
 	return p;
 }
@@ -265,15 +265,19 @@ void int_append_head(Int* a, NUMBER_UNIT n){
 }
 
 void flip_int(Int* dest, Int* a){
+	Int ca = {0};
+	clone_int(&ca, a);
 	dest->tracker = 0;
 	for(size_t i=0;i<a->tracker; i++){
-		a->number[i] = 99-a->number[i];
+		a->number[i] = MAX_VAL-a->number[i];
 	}
 	Int b = {0};
 	new_int_from_dec(&b, "1");
 	a->sign = false;
 	add_int(dest, a, &b);
-	dest->sign = !a->sign;
+	dest->sign = false;
+	clone_int(a, &ca);
+	a->sign = !a->sign;
 }
 
 void clone_int(Int* dest, Int* a){
@@ -286,62 +290,61 @@ void clone_int(Int* dest, Int* a){
 	}
 }
 
-bool int_eq(Int* a, Int* b){
-	bool res = false;
-	if((a->tracker == b->tracker) && (a->sign && b->sign)){
-		res = true;
-		for(size_t i=0;i<a->tracker;i+=1){
-			if(a->number[i] != b->number[i]){
-				res = false;
-				break;
-			}
-		}
-	}
-	return res;
-}
-bool int_ueq(Int* a, Int* b){
-	bool res = false;
-	if(a->tracker == b->tracker){
-		res = true;
-		for(size_t i=0;i<a->tracker;i+=1){
-			if(a->number[i] != b->number[i]){
-				res = false;
-				break;
-			}
-		}
-	}
-	return res;
 
+bool int_eq(Int* a, Int* b){
+	if(a->sign != b->sign) return false;
+	return int_ueq(a, b);
+}
+
+bool int_ueq(Int* a, Int* b){
+	Int ca = {0};
+	Int cb = {0};
+	clone_int(&ca, a);
+	clone_int(&cb, b);
+	if(ca.tracker > cb.tracker){
+		int_norm(&cb, ca.tracker);
+	}else if(ca.tracker < cb.tracker){
+		int_norm(&ca, cb.tracker);
+	}
+	bool res = true;
+	for(size_t i=0;i<ca.tracker;i+=1){
+		if(ca.number[i] != cb.number[i]){
+			res = false;
+			break;
+		}
+	}
+	return res;
 }
 
 bool int_gtr(Int* a, Int* b){
 	if(int_eq(a, b)) return false;
+	Int ca = {0};
+	Int cb = {0};
 	bool res = false;
 	if(!a->sign && b->sign){
 		return true;
 	}else if(a->sign && !b->sign){
 		return false;
 	}else{
+		clone_int(&ca, a);
+		clone_int(&cb, b);
 		size_t len = 0;
-		if(a->tracker > b->tracker){
-			len = a->tracker;
+		if(ca.tracker > cb.tracker){
+			len = ca.tracker;
+			int_norm(&cb, len);
 		}else{
-			len = b->tracker;
+			len = cb.tracker;
+			int_norm(&ca, len);
 		}
-		int_norm(a, len);
-		int_norm(b, len);
 		for(size_t i=0;i<len;i+=1){
-			if(a->number[i] > b->number[i]){
+			if(ca.number[i] > cb.number[i]){
 				res = true;
 				break;
 			}
-			if(a->number[i] < b->number[i]){
+			if(ca.number[i] < cb.number[i]){
 				res = false;
 				break;
 			}
-		}
-		if(a->sign && b->sign){
-			res = !res;
 		}
 	}
 	return res;
@@ -353,15 +356,17 @@ bool int_lst(Int* a, Int* b){
 }
 
 void int_norm(Int* a, size_t len){
-	for(size_t i=0;i<len-a->tracker; i+=1){
+	for(size_t i=0;i<len-a->tracker+1; i+=1){
 		int_append_head(a, 0);
 	}	
 }
 
 void generate_int(Int* dest, int digits){
+	dest->tracker = 0;
 	srand(time(NULL));
 	for(size_t i=0;i<digits/DIGIT_PER_UNIT; i++){
-		int_append_head(dest, rand()&99);
+		int data = rand()%MAX_VAL;
+		int_append_head(dest, data);
 	}
 }
 
@@ -372,7 +377,7 @@ char* render_int(Int* a){
 	if(a->sign) strcat(buffer, "-");
 	char t[3] = {0};
 	for(size_t i=0;i<a->tracker; i++){
-		sprintf(t, "%.2u", a->number[i]);
+		sprintf(t, "%.*u", (int)DIGIT_PER_UNIT, a->number[i]);
 		strcat(buffer, t);
 	}
 	return buffer;
