@@ -8,7 +8,31 @@ int main(){
 	Int a = {0};
 	Int b = {0};
 	Int res = {0};
+	
+	generate_int(&a, 16);
+	usleep(1000000);
+	generate_int(&b, 16);
+	print_int(&a);
+	printf("*\n");
+	print_int(&b);
+	printf("A tracker: %zu\n", a.tracker);
+	printf("B tracker: %zu\n", b.tracker);
+	printf("=\n");
+	add_int(&res, &a, &b);
+	print_int(&res);
 
+	return 0;
+	generate_int(&a, 300);
+	usleep(1000000);
+	generate_int(&b, 300);
+	print_int(&a);
+	printf("*\n");
+	print_int(&b);
+	printf("=\n");
+	mux_int(&res, &a, &b);
+	printf("%s\n", render_int(&res));
+
+	return 0;
 	new_int_from_dec(&a, "100");
 	new_int_from_dec(&b, "-1");
 	add_int(&res, &a, &b);
