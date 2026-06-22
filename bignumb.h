@@ -69,6 +69,7 @@ void int_append_head(Int* a, NUMBER_UNIT n);
 void int_view_append_head(Int_View* a, uint8_t n);
 void int_append(Int* a, NUMBER_UNIT n);
 void flip_int(Int* dest, Int* a);
+void invert_array(NUMBER_UNIT* array, size_t size);
 void clone_int(Int* dest, Int* a);
 void free_int(Int* a);
 void int_norm(Int* a, size_t len);
@@ -212,38 +213,49 @@ void dec_int(Int* a){
 
 
 void mux_int(Int* res, Int* a,Int* b){
-	Int i = {0};
-	Int m = {0};
 	Int ca = {0};
 	Int cb = {0};
-
 	clone_int(&ca, a);
 	clone_int(&cb, b);
-	res->tracker = 0;
-	int_append_head(&i, 0);
-	ca.sign = false;
-	cb.sign = false;
-	if(int_ueq(&ca, &i) || int_ueq(&cb, &i)){
-		int_append_head(res, 0);
-		return;
+	invert_array(ca.number, ca.tracker);
+	invert_array(cb.number, cb.tracker);
+	if(ca.tracker > cb.tracker){
+		int_norm(&cb, ca.tracker);
+	}else if(cb.tracker > ca.tracker){
+		int_norm(&ca, cb.tracker);
 	}
-	inc_int(&i);
-	clone_int(&m, &ca);
-	while(int_lst(&i, &cb)){
-		add_int(res, &ca, &m);
-		clone_int(&ca, res);
-		inc_int(&i);
+
+	size_t res_size = a->tracker+b->tracker;
+	if(res->ptr){
+		free(res->ptr);
+		res->ptr = NULL;
+		res->number = NULL;
+		res->tracker = 0;
+		res->size = 0;
 	}
-	clone_int(res, &ca);
-	if(a->sign == b->sign) {
-		res->sign = false;
-	}else{
-		res->sign = true;
+	res->number = (NUMBER_UNIT*)malloc(sizeof(NUMBER_UNIT)*res_size);
+	res->ptr = res->number;
+	res->size = res_size;
+	res->tracker = res_size;
+
+	for(size_t i=0;i<b->tracker;i++){
+		NUMBER_UNIT carry = 0;
+		for(size_t j=0;j<a->tracker; j++){
+			__uint128_t p = res->number[i+j];
+			p += carry + (a->number[j] * b->number[i]);
+			carry = a->number[i+j] / MAX_VAL;
+			res->number[i+j] = p % MAX_VAL;
+			res->number[i+a->tracker] = carry;
+		}
 	}
-	free_int(&i);
-	free_int(&m);
+	res->tracker -= 1;
 	free_int(&ca);
 	free_int(&cb);
+	if(a->sign != b->sign){
+		res->sign = true;
+	}else{
+		res->sign = false;
+	}
 }
 
 void pow_int(Int* res, Int* a, Int* power){
@@ -362,6 +374,18 @@ void flip_int(Int* dest, Int* a){
 	add_int(dest, &ca, &b);
 	dest->sign = false;
 	free_int(&ca);
+}
+
+void invert_array(NUMBER_UNIT* array, size_t size){
+	NUMBER_UNIT* c = (NUMBER_UNIT*)malloc(sizeof(NUMBER_UNIT)*size);
+	memcpy(c, array, sizeof(NUMBER_UNIT)*size);
+	size_t t = size-1;
+	for(size_t i=0;i<size && t >= 0; i++){
+		array[i] = c[t];
+		t-=1;
+	}
+	free(c);
+	c = NULL;
 }
 
 void free_int(Int* a){

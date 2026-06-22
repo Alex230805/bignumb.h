@@ -9,16 +9,16 @@ int main(){
 	Int b = {0};
 	Int res = {0};
 	
-	generate_int(&a, 16);
-	usleep(1000000);
-	generate_int(&b, 16);
+	generate_int(&a, 1024);
+	sleep(1);
+	generate_int(&b, 1024);
 	print_int(&a);
 	printf("*\n");
 	print_int(&b);
 	printf("A tracker: %zu\n", a.tracker);
 	printf("B tracker: %zu\n", b.tracker);
 	printf("=\n");
-	add_int(&res, &a, &b);
+	mux_int(&res, &a, &b);
 	print_int(&res);
 
 	return 0;
